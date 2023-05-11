@@ -1,4 +1,4 @@
-/*******************************************************************
+  /*******************************************************************
   Project main function template for MicroZed based MZ_APO board
   designed by 
 
@@ -23,11 +23,10 @@
  
 unsigned short *fb;
 
-//  ((r>>3)<<11)|((g>>2)<<5)|(b>>3) - parse1 color
 
 void draw_pixel(int x, int y, unsigned short color) {
   if (x>=0 && x<480 && y>=0 && y<320) {
-    fb[x+480*y] = color;
+    fb[x+480*y] = color;  
   }
   return;
 }
@@ -46,16 +45,54 @@ void update_canvas(unsigned short *fb,void *parlcd_mem_base){
   return;
 }
 
-void change_color(unsigned short *color,unsigned short val){
+//  ((r>>3)<<11)|((g>>2)<<5)|(b>>3) - parse1 color
+
+// Change RGB-lights color
+void change_color_RGB(unsigned char *mem_base, unsigned int clr) {
+  uint8_t r = (clr >> 11) & 0x1F;
+  r <<= 3;
+  uint8_t g = (clr >> 5) & 0x3F;
+  g <<= 2;
+  uint8_t b = clr & 0x1F;
+  b <<= 3;
+  unsigned int tmp_clr = 0;
+  change_color_LED(&tmp_clr, r, g, b);
+
+  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = tmp_clr;
+  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = tmp_clr;
+}
+
+// change color to LED format (RGB)
+void change_color_LED(unsigned int *color, uint8_t r, uint8_t g, uint8_t b){
+  uint32_t val = 0;
+  val |= r;
+  val <<= 8;
+  val |= g;
+  val <<= 8;
+  val |= b;
+
   *color = val;
   return;
 }
+
+// change color to LCD format
+void change_color_LCD(unsigned short *color, uint8_t r, uint8_t g, uint8_t b){
+  uint32_t val = 0;
+  val |= (r>>3);
+  val <<= 6;
+  val |= (g>>2);
+  val <<= 5;
+  val |= (b>>3);
+
+  *color = val;
+  return;
+} 
  
 int main(int argc, char *argv[]) {
   unsigned char *parlcd_mem_base, *mem_base;
   int ptr;
-  unsigned short clr=0x7ff;
-  unsigned short background_clr=0;
+  unsigned short clr = 0xffff; // "WHITE"
+  unsigned short background_clr = 0;
   unsigned int c;
   fb  = (unsigned short *)malloc(320*480*2);
  
@@ -79,23 +116,46 @@ int main(int argc, char *argv[]) {
   loop_delay.tv_nsec = 1 * 1000 * 1000;
   int xx=0, yy=0;
   while (1) {
- 
     int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+
+    // change_color_LED(clr, 255, 255, 255);
+    change_color_RGB(mem_base, clr);
+    
     if ((knobs&0x07000000)==0x07000000) {
       //Turn off if all pressed
       printf("knobs: %x\n",(knobs&0x07000000));
+      printf("The program has ended\n");
       break;
+    }
+
+    if ((knobs&0x07000000)==0x04000000) {
+      //change color if R pressed
+      printf("knobs: %x\n",(knobs&0x07000000));
+      printf("Color is changed to 0x%04X\n", clr);
+
+      change_color_LCD(&clr, 255, 0, 0);
     }
     if ((knobs&0x07000000)==0x02000000) {
       //change color if G pressed
       printf("knobs: %x\n",(knobs&0x07000000));
-      change_color(&clr,0xffff);
+      printf("Color is changed to 0x%04X\n", clr);
+
+      change_color_LCD(&clr, 0, 255, 0);
     }
+    if ((knobs&0x07000000)==0x01000000) {
+      //change color if B pressed
+      printf("knobs: %x\n",(knobs&0x07000000));
+      printf("Color is changed to 0x%04X\n", clr);
+
+      change_color_LCD(&clr, 0, 0, 255);
+    }
+
     if ((knobs&0x07000000)==0x05000000) {
       // Clear canvas if R&B pressed
       printf("knobs: %x\n",(knobs&0x07000000));
       clear_buffer(fb);
       update_canvas(fb,parlcd_mem_base);
+      printf("The canvas is cleared\n");
     }
     xx = ((knobs&0xff)*480)/256;
     yy = (((knobs>>16)&0xff)*320)/256;
