@@ -12,7 +12,7 @@ LDLIBS += -lrt -lpthread
 SOURCES = main.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c
 SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = main
-TARGET_IP ?= 192.168.223.105
+TARGET_IP ?= 192.168.223.202
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
@@ -31,7 +31,7 @@ TARGET_USER ?= root
 # SSH_OPTIONS+=-i /opt/zynq/ssh-connect/mzapo-root-key
 
 # Working options that does NOT require any passwords
-# SSH_OPTIONS=-o ProxyCommand='ssh -i /root/.ssh/postelfelk -W %h:%p nazarrod@postel.felk.cvut.cz'
+SSH_OPTIONS=-o ProxyCommand='ssh -i /root/.ssh/postelfelk -W %h:%p nazarrod@postel.felk.cvut.cz'
 SSH_OPTIONS+=-i /opt/zynq/ssh-connect/mzapo-root-key
 
 OBJECTS += $(filter %.o,$(SOURCES:%.c=%.o))
