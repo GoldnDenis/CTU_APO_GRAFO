@@ -20,8 +20,9 @@
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
- 
+
 unsigned short *fb;
+int delta_knobs;
 
 
 void draw_pixel(int x, int y, unsigned short color) {
@@ -47,6 +48,20 @@ void update_canvas(unsigned short *fb,void *parlcd_mem_base){
 
 //  ((r>>3)<<11)|((g>>2)<<5)|(b>>3) - parse1 color
 
+
+// change color to LED format (RGB)
+void change_color_LED(unsigned int *color, uint8_t r, uint8_t g, uint8_t b){
+  uint32_t val = 0;
+  val |= r;
+  val <<= 8;
+  val |= g;
+  val <<= 8;
+  val |= b;
+
+  *color = val;
+  return;
+}
+
 // Change RGB-lights color
 void change_color_RGB(unsigned char *mem_base, unsigned int clr) {
   uint8_t r = (clr >> 11) & 0x1F;
@@ -62,17 +77,12 @@ void change_color_RGB(unsigned char *mem_base, unsigned int clr) {
   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = tmp_clr;
 }
 
-// change color to LED format (RGB)
-void change_color_LED(unsigned int *color, uint8_t r, uint8_t g, uint8_t b){
-  uint32_t val = 0;
-  val |= r;
-  val <<= 8;
-  val |= g;
-  val <<= 8;
-  val |= b;
+void change_tmp(unsigned char *mem_base, unsigned short r, unsigned short g, unsigned short b) {
+  unsigned int tmp_clr = 0;
+  change_color_LED(&tmp_clr, r, g, b);
 
-  *color = val;
-  return;
+  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = tmp_clr;
+  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = tmp_clr;
 }
 
 // change color to LCD format
@@ -88,14 +98,35 @@ void change_color_LCD(unsigned short *color, uint8_t r, uint8_t g, uint8_t b){
   return;
 } 
 
-void set_color(unsigned char *mem_base,int* clr){
-  printf("function set_color\n");
-  // *clr = 0x07E0;
-  // while (1) {
-  //   int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-  //   printf("Color is changed to green");
-  //   if ((knobs&0x07000000)==0x02000000)return clr;
-  // }
+void set_color(unsigned char *mem_base,unsigned short* clr){
+  struct timespec loop_delay;
+  loop_delay.tv_sec = 0;
+  loop_delay.tv_nsec = 500 * 1000 * 1000; // 500 ms
+  clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+
+  *clr = 0x07E0;
+  unsigned short r,g,b;
+  int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  cur_knobs &= (16777215);
+
+  while (1) {
+    int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    r = (knobs>>16) & 255;
+    g = (knobs>>8) & 255;
+    b = knobs & 255;
+    printf("R:%d G:%d B:%d \n",r,g,b);
+    change_tmp(mem_base,r,g,b);
+
+    if ((knobs&0x07000000)==0x02000000){
+      clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+      
+      knobs &= (16777215);
+      change_color_LCD(clr, r, g, b);
+      delta_knobs += knobs - cur_knobs;
+      printf("color is changed to r:%d g:%d b:%d quit set_color fnc\n",r,g,b);
+      return;
+    }
+  }
 }
  
 int main(int argc, char *argv[]) {
@@ -127,8 +158,10 @@ int main(int argc, char *argv[]) {
   loop_delay.tv_sec = 0;
   loop_delay.tv_nsec = 1 * 1000 * 1000;
   int xx=0, yy=0;
+  int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  delta_knobs += knobs;
   while (1) {
-    int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     
     // in progress
     // *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
@@ -147,22 +180,10 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    if ((knobs&0x07000000)==0x04000000) {
-      //change color if R pressed
-      printf("Color is changed to 0x%04X\n", clr);
-
-      change_color_LCD(&clr, 255, 0, 0);
-    }
     if ((knobs&0x07000000)==0x02000000) {
       //change color if G pressed
       set_color(mem_base,&clr);
-      change_color_LCD(clr, 0, 255, 0);
-    }
-    if ((knobs&0x07000000)==0x01000000) {
-      //change color if B pressed
-      printf("Color is changed to 0x%04X\n", clr);
-
-      change_color_LCD(&clr, 0, 0, 255);
+      knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     }
 
     if ((knobs&0x07000000)==0x05000000) {
@@ -171,8 +192,9 @@ int main(int argc, char *argv[]) {
       update_canvas(fb,parlcd_mem_base);
       printf("The canvas is cleared\n");
     }
-    xx = ((knobs&0xff)*480)/256;
-    yy = (((knobs>>16)&0xff)*320)/256;
+    int pos_knobs = knobs-delta_knobs;
+    xx = ((pos_knobs&0xff)*480)/256;
+    yy = (((pos_knobs>>16)&0xff)*320)/256;
 
     for (int j=0; j<5; j++)
       for (int i=0; i<5; i++) 
