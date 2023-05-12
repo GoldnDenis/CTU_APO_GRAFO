@@ -89,6 +89,8 @@ void change_color_LCD(unsigned short *color, uint8_t r, uint8_t g, uint8_t b){
 } 
  
 int main(int argc, char *argv[]) {
+  uint32_t val_line = 1;
+
   unsigned char *parlcd_mem_base, *mem_base;
   int ptr;
   unsigned short clr = 0xffff; // "WHITE"
@@ -117,6 +119,14 @@ int main(int argc, char *argv[]) {
   int xx=0, yy=0;
   while (1) {
     int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    
+    // in progress
+    // *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
+    // for (int i = 0; i < 32; i++) {
+    //   if (val_line >= (1 << 32)) val_line >>= 1;
+    //   else if (val_line <= 1) val_line <<= 1;
+    // }
+
 
     // change_color_LED(clr, 255, 255, 255);
     change_color_RGB(mem_base, clr);
