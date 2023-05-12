@@ -32,9 +32,9 @@ void draw_pixel(int x, int y, unsigned short color) {
   return;
 }
 
-void clear_buffer(unsigned short *fb){
+void clear_buffer(unsigned short *fb,unsigned int background_color){
   for (int ptr = 0; ptr < 320*480 ; ptr++) 
-    fb[ptr]=0u;
+    fb[ptr]=background_color;
   return;
 }
 
@@ -104,7 +104,6 @@ void set_color(unsigned char *mem_base,unsigned short* clr){
   loop_delay.tv_nsec = 500 * 1000 * 1000; // 500 ms
   clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
 
-  *clr = 0x07E0;
   unsigned short r,g,b;
   int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   cur_knobs &= (16777215);
@@ -127,6 +126,13 @@ void set_color(unsigned char *mem_base,unsigned short* clr){
       return;
     }
   }
+}
+
+void set_backround(unsigned short* background_color,unsigned short *fb,void *parlcd_mem_base){
+  *background_color = 0x07E0;
+  clear_buffer(fb,*background_color);
+  update_canvas(fb,parlcd_mem_base);
+  return;
 }
  
 int main(int argc, char *argv[]) {
@@ -151,7 +157,7 @@ int main(int argc, char *argv[]) {
  
   parlcd_hx8357_init(parlcd_mem_base);
  
-  clear_buffer(fb);
+  clear_buffer(fb,background_clr);
   update_canvas(fb,parlcd_mem_base);
   
   struct timespec loop_delay;
@@ -160,6 +166,7 @@ int main(int argc, char *argv[]) {
   int xx=0, yy=0;
   int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   delta_knobs += knobs;
+  set_backround(&background_clr,fb,parlcd_mem_base);
   while (1) {
     knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     
@@ -186,7 +193,7 @@ int main(int argc, char *argv[]) {
 
     if ((knobs&0x07000000)==0x05000000) {
       // Clear canvas if R&B pressed
-      clear_buffer(fb);
+      clear_buffer(fb,background_clr);
       update_canvas(fb,parlcd_mem_base);
       printf("The canvas is cleared\n");
     }
