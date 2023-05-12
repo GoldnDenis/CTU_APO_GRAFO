@@ -170,8 +170,6 @@ int main(int argc, char *argv[]) {
     //   else if (val_line <= 1) val_line <<= 1;
     // }
 
-
-    // change_color_LED(clr, 255, 255, 255);
     change_color_RGB(mem_base, clr);
     
     if ((knobs&0x07000000)==0x07000000) {
