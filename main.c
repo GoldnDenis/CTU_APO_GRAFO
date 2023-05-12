@@ -87,6 +87,16 @@ void change_color_LCD(unsigned short *color, uint8_t r, uint8_t g, uint8_t b){
   *color = val;
   return;
 } 
+
+void set_color(unsigned char *mem_base,int* clr){
+  printf("function set_color\n");
+  // *clr = 0x07E0;
+  // while (1) {
+  //   int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  //   printf("Color is changed to green");
+  //   if ((knobs&0x07000000)==0x02000000)return clr;
+  // }
+}
  
 int main(int argc, char *argv[]) {
   uint32_t val_line = 1;
@@ -133,28 +143,23 @@ int main(int argc, char *argv[]) {
     
     if ((knobs&0x07000000)==0x07000000) {
       //Turn off if all pressed
-      printf("knobs: %x\n",(knobs&0x07000000));
       printf("The program has ended\n");
       break;
     }
 
     if ((knobs&0x07000000)==0x04000000) {
       //change color if R pressed
-      printf("knobs: %x\n",(knobs&0x07000000));
       printf("Color is changed to 0x%04X\n", clr);
 
       change_color_LCD(&clr, 255, 0, 0);
     }
     if ((knobs&0x07000000)==0x02000000) {
       //change color if G pressed
-      printf("knobs: %x\n",(knobs&0x07000000));
-      printf("Color is changed to 0x%04X\n", clr);
-
-      change_color_LCD(&clr, 0, 255, 0);
+      set_color(mem_base,&clr);
+      change_color_LCD(clr, 0, 255, 0);
     }
     if ((knobs&0x07000000)==0x01000000) {
       //change color if B pressed
-      printf("knobs: %x\n",(knobs&0x07000000));
       printf("Color is changed to 0x%04X\n", clr);
 
       change_color_LCD(&clr, 0, 0, 255);
@@ -162,7 +167,6 @@ int main(int argc, char *argv[]) {
 
     if ((knobs&0x07000000)==0x05000000) {
       // Clear canvas if R&B pressed
-      printf("knobs: %x\n",(knobs&0x07000000));
       clear_buffer(fb);
       update_canvas(fb,parlcd_mem_base);
       printf("The canvas is cleared\n");

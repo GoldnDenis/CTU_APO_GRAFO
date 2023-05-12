@@ -1,3 +1,7 @@
 *.o
 depend
 Makefile
+main
+mzapo_changes
+token
+controlable_sqr
