@@ -9,6 +9,7 @@
  *******************************************************************/
 
 #define _POSIX_C_SOURCE 200112L
+#define BUFFERS_LEN 320*480*2
  
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <termios.h>            //termios, TCSANOW, ECHO, ICANON
+#include <string.h>
  
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
@@ -32,9 +34,11 @@ int main(int argc, char *argv[])
   unsigned char *parlcd_mem_base, *mem_base;
   int ptr;
   unsigned short clr = 0xffff; // "WHITE"
+  short brush_size = 5;
   unsigned short background_clr = 0;
   unsigned int c;
-  unsigned short *fb  = (unsigned short *)malloc(320*480*2);
+  unsigned short *fb  = (unsigned short *)malloc(BUFFERS_LEN);
+  unsigned short *old_fb  = (unsigned short *)malloc(BUFFERS_LEN);
  
   printf("Hello world\n");
  
@@ -70,7 +74,7 @@ int main(int argc, char *argv[])
 
     change_RGB_lights(mem_base, clr);
     
-    if ((knobs&0x07000000)==0x07000000) {
+    if ((knobs&0x07000000)==0x01000000) {
       //Turn off if all pressed
       printf("The program has ended\n");
       break;
@@ -78,11 +82,13 @@ int main(int argc, char *argv[])
 
     if ((knobs&0x07000000)==0x02000000) {
       //change color if G pressed
-      set_brush_color(mem_base,&clr,&delta_knobs);
+      memcpy(old_fb,fb,BUFFERS_LEN);
+      set_brush_color(mem_base,parlcd_mem_base,fb,&clr,&brush_size,&delta_knobs);
+      memcpy(fb,old_fb,BUFFERS_LEN);
       knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     }
 
-    if ((knobs&0x07000000)==0x05000000) {
+    if ((knobs&0x07000000)==0x04000000) {
       // Clear canvas if R&B pressed
       clear_buffer(fb,background_clr);
       update_canvas(fb,parlcd_mem_base);
@@ -92,8 +98,8 @@ int main(int argc, char *argv[])
     xx = ((pos_knobs&0xff)*480)/256;
     yy = (((pos_knobs>>16)&0xff)*320)/256;
 
-    for (int j=0; j<5; j++)
-      for (int i=0; i<5; i++) 
+    for (int j=0; j<brush_size; j++)
+      for (int i=0; i<brush_size; i++) 
         draw_pixel(fb,i+xx,j+yy,clr);
     update_canvas(fb,parlcd_mem_base);
  
