@@ -29,13 +29,11 @@ int main(int argc, char *argv[])
 
   int delta_knobs = 0;
 
-  uint32_t val_line = 1;
-
   unsigned char *parlcd_mem_base, *mem_base;
   int ptr;
   unsigned short clr = 0xffff; // "WHITE"
   short brush_size = 5;
-  unsigned short background_clr = 0;
+  unsigned short background_clr = 0x0000;
   unsigned int c;
   unsigned short *fb  = (unsigned short *)malloc(BUFFERS_LEN);
   unsigned short *old_fb  = (unsigned short *)malloc(BUFFERS_LEN);
@@ -52,32 +50,34 @@ int main(int argc, char *argv[])
  
   parlcd_hx8357_init(parlcd_mem_base);
  
-  clear_buffer(fb,background_clr);
-  update_canvas(fb,parlcd_mem_base);
-  
+  draw_main_menu(mem_base, parlcd_mem_base, fb, &background_clr);
+
   struct timespec loop_delay;
   loop_delay.tv_sec = 0;
   loop_delay.tv_nsec = 1 * 1000 * 1000;
   int xx=0, yy=0;
   int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   delta_knobs += knobs;
-  set_background_color(&background_clr,fb,parlcd_mem_base);
   while (1) {
     knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-    
-    // in progress
-    // *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
-    // for (int i = 0; i < 32; i++) {
-    //   if (val_line >= (1 << 32)) val_line >>= 1;
-    //   else if (val_line <= 1) val_line <<= 1;
-    // }
+
 
     change_RGB_lights(mem_base, clr);
     
     if ((knobs&0x07000000)==0x01000000) {
-      //Turn off if all pressed
-      printf("The program has ended\n");
-      break;
+      // B pressed
+      printf("Going back to the Menu");
+
+      clr = 0xffff; // "WHITE"
+      brush_size = 5;
+      background_clr = 0;
+
+      draw_main_menu(mem_base, parlcd_mem_base, fb, &background_clr);
+
+      knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+      xx = yy = 0;
+      delta_knobs = knobs;
+      continue;
     }
 
     if ((knobs&0x07000000)==0x02000000) {
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     }
 
     if ((knobs&0x07000000)==0x04000000) {
-      // Clear canvas if R&B pressed
+      // Clear canvas if R pressed
       clear_buffer(fb,background_clr);
       update_canvas(fb,parlcd_mem_base);
       printf("The canvas is cleared\n");
@@ -98,9 +98,7 @@ int main(int argc, char *argv[])
     xx = ((pos_knobs&0xff)*480)/256;
     yy = (((pos_knobs>>16)&0xff)*320)/256;
 
-    for (int j=0; j<brush_size; j++)
-      for (int i=0; i<brush_size; i++) 
-        draw_pixel(fb,i+xx,j+yy,clr);
+    draw_rectangle(fb, xx, yy, brush_size, brush_size, clr);
     update_canvas(fb,parlcd_mem_base);
  
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
