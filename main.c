@@ -22,7 +22,9 @@
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
-#include "draw_utills.h"
+#include "draw_utils.h"
+#include "menus.h"
+#include "timers.h"
 
 int main(int argc, char *argv[]) 
 {
@@ -30,11 +32,9 @@ int main(int argc, char *argv[])
   int delta_knobs = 0;
 
   unsigned char *parlcd_mem_base, *mem_base;
-  int ptr;
   unsigned short clr = 0xffff; // "WHITE"
   short brush_size = 5;
   unsigned short background_clr = 0x0000;
-  unsigned int c;
   unsigned short *fb  = (unsigned short *)malloc(BUFFERS_LEN);
   unsigned short *old_fb  = (unsigned short *)malloc(BUFFERS_LEN);
  
@@ -52,17 +52,12 @@ int main(int argc, char *argv[])
  
   draw_main_menu(mem_base, parlcd_mem_base, fb, &background_clr);
 
-  struct timespec loop_delay;
-  loop_delay.tv_sec = 0;
-  loop_delay.tv_nsec = 1 * 1000 * 1000;
-  int xx=0, yy=0;
+  int xx=0, yy=0,pr_xx = 0,pr_yy = 0;
   int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   delta_knobs += knobs;
+  display_LED_lights(mem_base,255,255,255);
   while (1) {
     knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
-
-    change_RGB_lights(mem_base, clr);
     
     if ((knobs&0x07000000)==0x01000000) {
       // B pressed
@@ -90,7 +85,7 @@ int main(int argc, char *argv[])
 
     if ((knobs&0x07000000)==0x04000000) {
       // Clear canvas if R pressed
-      clear_buffer(fb,background_clr);
+      fill_buffer(fb,background_clr);
       update_canvas(fb,parlcd_mem_base);
       printf("The canvas is cleared\n");
     }
@@ -98,18 +93,13 @@ int main(int argc, char *argv[])
     xx = ((pos_knobs&0xff)*480)/256;
     yy = (((pos_knobs>>16)&0xff)*320)/256;
 
-    draw_rectangle(fb, xx, yy, brush_size, brush_size, clr);
+    connect_dots(fb, xx, yy,pr_xx,pr_yy, brush_size, brush_size, clr);
+    pr_xx = xx;
+    pr_yy = yy;
     update_canvas(fb,parlcd_mem_base);
  
-    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+    my_sleep(1);
   }
- 
-  parlcd_write_cmd(parlcd_mem_base, 0x2c);
-  for (ptr = 0; ptr < 480*320 ; ptr++) {
-    parlcd_write_data(parlcd_mem_base, 0);
-  }
- 
-  printf("Goodbye world\n");
  
   return 0;
 }
