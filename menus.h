@@ -28,5 +28,8 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
 void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs);
 void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs);
 void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb);
+void show_tutorial(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb);
+void menu_animation(unsigned char *mem_base,int* x,int* dir);
+void drawing_animation(unsigned char *mem_base);
 
 #endif /*MENUS_H*/

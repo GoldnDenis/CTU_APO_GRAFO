@@ -2,13 +2,42 @@
 
 font_descriptor_t *fdes = &font_rom8x16;
 
+void menu_animation(unsigned char *mem_base,int* x,int* dir){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = *x;
+    if(*dir == 1)
+        (*x)<<=1;
+    else
+        (*x)>>=1;
+    if(*x == 255 || !( (*x) & (16777215)) )(*dir) ^= 1;
+    return;
+}
+
+void drawing_animation(unsigned char *mem_base){
+   unsigned int v = 0;
+   int x;
+   clock_t currentTime;
+   currentTime = clock();
+   srand((unsigned int)currentTime);
+   int num = rand()%8;
+   for(int i = 0;i < num;i++){
+        x = rand()%32;
+        v |= (1<<x);
+   }
+   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = v;
+   return;
+}
+
+
 void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb) {
   my_sleep(500);
+  int val_line = 255;
+  int dir = 1;
   unsigned short cur_state = START;
   char* string = (char*)malloc(30);
   unsigned short g;
   display_LED_lights(mem_base,0,0,0);
   while (1) {
+    menu_animation(mem_base,&val_line,&dir);
     int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     g = (knobs>>8) & 255;
     fill_buffer(fb, 0xffff);
@@ -51,9 +80,10 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
           start_drawing(mem_base,parlcd_mem_base,fb);
           break;
         case TUTORIAL:
-          // TO-DO
+          show_tutorial(mem_base,parlcd_mem_base,fb);
           break;
         case EXIT:
+          *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = 0;
           display_LED_lights(mem_base,0,0,0);
           parlcd_write_cmd(parlcd_mem_base, 0x2c);
           for (int ptr = 0; ptr < 480*320 ; ptr++) {
@@ -67,7 +97,7 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
 }
 
 void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* background_clr){    
-  draw_rectangle(fb,80,60,320,200,0xFFFF);  
+  draw_rectangle(fb,80,60,320,200,0xFFFF);
   my_sleep(500);
 
   char* string = (char*)malloc(30);
@@ -125,7 +155,7 @@ void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short
 
   while (1) {
     int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-    g = (knobs>>8) & 255;    
+    g = (knobs>>8) & 255;
     *brush_size = (255 + g - orig)%51;
     if(*brush_size < 5)*brush_size = 5;
 
@@ -224,6 +254,7 @@ void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned shor
   delta_knobs += knobs;
   display_LED_lights(mem_base,255,255,255);
   while (1) {
+    drawing_animation(mem_base);
     knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     
     if ((knobs&0x07000000)==0x01000000)
@@ -244,4 +275,37 @@ void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned shor
  
     my_sleep(1);
   }
+}
+
+void show_tutorial(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb){
+    fill_buffer(fb,0);
+    update_canvas(fb,parlcd_mem_base);
+    char* string = (char*)malloc(30);
+    memset(string,0,30);
+    strncpy(string, "Red button:\0", 12);
+    draw_string(fb,10,10,string,0xf800,fdes,2);
+    memset(string,0,30);
+    strncpy(string, "clear canvas\0", 13);
+    draw_string(fb,10,40,string,0xf800,fdes,2);
+
+    memset(string,0,30);
+    strncpy(string, "Green button:\0", 14);
+    draw_string(fb,10,105,string,0x7e0,fdes,2);
+    memset(string,0,30);
+    strncpy(string, "brush configuration/OK\0", 28);
+    draw_string(fb,10,135,string,0x7e0,fdes,2);
+
+    memset(string,0,30);
+    strncpy(string, "Blue button:\0", 13);
+    draw_string(fb,10,195,string,0x7ff,fdes,2);
+    memset(string,0,30);
+    strncpy(string, "main menu\0", 10);
+    draw_string(fb,10,225,string,0x7ff,fdes,2);
+
+    update_canvas(fb,parlcd_mem_base);
+    while (1) {
+        int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+        if ((knobs&0x07000000)==0x01000000) return;
+        my_sleep(1);
+    }
 }
