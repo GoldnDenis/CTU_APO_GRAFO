@@ -15,6 +15,7 @@
 #include "draw_utils.h"
 #include "color_utils.h"
 #include "timers.h"
+#include "drawing.h"
 
 enum Program_state {
     START,
@@ -22,7 +23,7 @@ enum Program_state {
     EXIT
 };
 
-void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb, unsigned short* background_color);
+void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb);
 void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* background_clr);
 void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs);
 void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs);

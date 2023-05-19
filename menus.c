@@ -2,7 +2,7 @@
 
 font_descriptor_t *fdes = &font_rom8x16;
 
-void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb, unsigned short *background_color) {
+void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb) {
   my_sleep(500);
   unsigned short cur_state = START;
   char* string = (char*)malloc(30);
@@ -48,9 +48,7 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
       my_sleep(1);
       switch(cur_state) {
         case START:
-          set_background_color(mem_base, parlcd_mem_base, fb, background_color);
-          fill_buffer(fb, *background_color);
-          return;
+          start_drawing(mem_base,parlcd_mem_base,fb);
           break;
         case TUTORIAL:
           // TO-DO
@@ -68,8 +66,8 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
   }
 }
 
-void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* background_clr){
-  draw_rectangle(fb,80,60,320,200,0xFFFF);
+void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* background_clr){    
+  draw_rectangle(fb,80,60,320,200,0xFFFF);  
   my_sleep(500);
 
   char* string = (char*)malloc(30);
@@ -91,7 +89,6 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
     g = (((knobs>>8) & 255)+dg) % 256;
     b = ((knobs & 255)+db) % 256;
     display_LED_lights(mem_base,r,g,b);
-    
     draw_rectangle(fb,80,60,320,200,0x0000);
     string[0] = 'R';string[2] = r/100+48;string[3] = (r/10)%10+48;string[4] = r%10+48;
     draw_string(fb,110,60,string,0xffff,fdes,4);

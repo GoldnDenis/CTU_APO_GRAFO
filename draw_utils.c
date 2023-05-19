@@ -14,7 +14,7 @@ void fill_buffer(unsigned short *fb,unsigned int background_color){
 }
 
 void update_canvas(unsigned short *fb,void *parlcd_mem_base){
-  parlcd_write_cmd(parlcd_mem_base, 0x2c);
+  parlcd_write_cmd(parlcd_mem_base, 0x2c);  
   for (int ptr = 0; ptr < 480*320 ; ptr++) {
       parlcd_write_data(parlcd_mem_base, fb[ptr]);
   }
