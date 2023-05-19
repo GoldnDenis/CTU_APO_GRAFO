@@ -307,7 +307,6 @@ void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short
 }
 
 void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs){
-  //TODO - remember old rgb setup (like in set_brush_size).
   struct timespec stop_delay;
   stop_delay.tv_sec = 0;
   stop_delay.tv_nsec = 500 * 1000 * 1000; // 500 ms
@@ -324,18 +323,23 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
   loop_delay.tv_sec = 0;
   loop_delay.tv_nsec = 1 * 1000 * 1000; // 500 ms
 
+  static unsigned short old_r=0,old_g=0,old_b=0;
+  unsigned short dr,dg,db;
   unsigned short r,g,b;
   int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   cur_knobs &= (16777215);
 
+  dr = (256 + old_r - ((cur_knobs>>16) & 255)) % 256;
+  dg = (256 + old_g - ((cur_knobs>>8) & 255)) % 256;
+  db = (256 + old_b - (cur_knobs & 255)) % 256;
+
   while (1) {
     int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-    r = (knobs>>16) & 255;
-    g = (knobs>>8) & 255;
-    b = knobs & 255;
+    r = (((knobs>>16) & 255)+dr) % 256;
+    g = (((knobs>>8) & 255)+dg) % 256;
+    b = ((knobs & 255)+db) % 256;
     change_tmp_color(mem_base,r,g,b);
 
-    printf("R:%d G:%d B:%d \n",r,g,b);
     draw_rectangle(fb,80,60,320,200,0xFFFF);
     string[0] = 'R';string[2] = r/100+48;string[3] = (r/10)%10+48;string[4] = r%10+48;
     draw_string(fb,110,60,string,0x0000,fdes,4);
@@ -353,6 +357,7 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
       change_color_LCD(clr, r, g, b);
       *delta_knobs += knobs - cur_knobs;
       printf("color is changed to r:%d g:%d b:%d quit set_color fnc\n",r,g,b);
+      old_r = r,old_g = g,old_b = b;
       set_brush_size(mem_base,parlcd_mem_base,fb,clr,brush_size,delta_knobs);
       return;
     }

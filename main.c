@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
     
     if ((knobs&0x07000000)==0x01000000) {
       // B pressed
-      printf("Going back to the Menu");
+      printf("Going back to the Menu\n");
 
       clr = 0xffff; // "WHITE"
       brush_size = 5;
