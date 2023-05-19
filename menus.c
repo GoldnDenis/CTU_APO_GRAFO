@@ -189,10 +189,59 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
       knobs &= (16777215);
       convert_RGB_to_LCD(clr, r, g, b);
       *delta_knobs += knobs - cur_knobs;
-      printf("color is changed to r:%d g:%d b:%d quit set_color fnc\n",r,g,b);
       old_r = r,old_g = g,old_b = b;
       set_brush_size(mem_base,parlcd_mem_base,fb,clr,brush_size,delta_knobs);
       return;
     }
+  }
+}
+
+void configurate_brush(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short *old_fb,unsigned short* clr,short* brush_size,int* delta_knobs,int* knobs){
+    memcpy(old_fb,fb,BUFFERS_LEN);
+    set_brush_color(mem_base,parlcd_mem_base,fb,clr,brush_size,delta_knobs);
+    memcpy(fb,old_fb,BUFFERS_LEN);
+    *knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    return;
+}
+
+void clear_canvas(void *parlcd_mem_base,unsigned short *fb,int background_color){
+    fill_buffer(fb,background_color);
+    update_canvas(fb,parlcd_mem_base);
+}
+
+void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb)
+{
+  int delta_knobs = 0;
+  unsigned short clr = 0xffff; // "WHITE"
+  short brush_size = 5;
+  unsigned short background_color = 0x0000;
+  unsigned short *old_fb  = (unsigned short *)malloc(BUFFERS_LEN);
+  set_background_color(mem_base, parlcd_mem_base, fb, &background_color);
+  fill_buffer(fb, background_color);
+
+  int xx=0, yy=0,pr_xx = 0,pr_yy = 0;
+  int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+  delta_knobs += knobs;
+  display_LED_lights(mem_base,255,255,255);
+  while (1) {
+    knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    
+    if ((knobs&0x07000000)==0x01000000)
+        return;
+    if ((knobs&0x07000000)==0x02000000) 
+      configurate_brush(mem_base,parlcd_mem_base,fb,old_fb,&clr,&brush_size,&delta_knobs,&knobs);
+    if ((knobs&0x07000000)==0x04000000)
+        clear_canvas(parlcd_mem_base,fb,background_color);
+
+    int pos_knobs = knobs-delta_knobs;
+    xx = ((pos_knobs&0xff)*480)/256;
+    yy = (((pos_knobs>>16)&0xff)*320)/256;
+
+    connect_dots(fb, xx, yy,pr_xx,pr_yy, brush_size, brush_size, clr);
+    pr_xx = xx;
+    pr_yy = yy;
+    update_canvas(fb,parlcd_mem_base);
+ 
+    my_sleep(1);
   }
 }
