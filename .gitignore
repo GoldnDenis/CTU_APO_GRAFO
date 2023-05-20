@@ -1,7 +1,6 @@
 *.o
 .vscode
 depend
-Makefile
 main
 mzapo_changes
 token
