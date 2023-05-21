@@ -3,6 +3,6 @@
 
 #include <time.h>
 
-void my_sleep();
+void my_sleep(int t);
 
 #endif /*TIMERS_H*/

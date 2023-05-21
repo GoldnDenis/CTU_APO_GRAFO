@@ -1,5 +1,6 @@
 #include "draw_utils.h"
 
+//Set color of the pixel on [x,y]
 void draw_pixel(unsigned short *fb,int x, int y, unsigned short color){
   if (x>=0 && x<480 && y>=0 && y<320) {
     fb[x+480*y] = color;  
@@ -7,12 +8,14 @@ void draw_pixel(unsigned short *fb,int x, int y, unsigned short color){
   return;
 }
 
+//Fill frame buffer with given color
 void fill_buffer(unsigned short *fb,unsigned int background_color){
   for (int ptr = 0; ptr < 320*480 ; ptr++) 
     fb[ptr]=background_color;
   return;
 }
 
+//Show current frame buffer on the screen
 void update_canvas(unsigned short *fb,void *parlcd_mem_base){
   parlcd_write_cmd(parlcd_mem_base, 0x2c);  
   for (int ptr = 0; ptr < 480*320 ; ptr++) {
@@ -21,6 +24,7 @@ void update_canvas(unsigned short *fb,void *parlcd_mem_base){
   return;
 }
 
+//Draw square on on [x,y] of given color and size
 void draw_pixel_big(unsigned short *fb,int x, int y, unsigned short color,int scale) {
   int i,j;
   for (i=0; i<scale; i++) {
@@ -30,6 +34,7 @@ void draw_pixel_big(unsigned short *fb,int x, int y, unsigned short color,int sc
   }
 }
 
+// Get width of the char in given font
 int char_width(font_descriptor_t *fdes,int ch) {
   int width;
   if (!fdes->width) {
@@ -40,6 +45,7 @@ int char_width(font_descriptor_t *fdes,int ch) {
   return width;
 }
 
+//Put char of the given font,color and sise in the frame buffer
 void draw_char(unsigned short *fb,int x, int y, char ch, unsigned short color,font_descriptor_t *fdes,int scale) {
   int w = char_width(fdes,ch);
   const font_bits_t *ptr;
@@ -64,6 +70,7 @@ void draw_char(unsigned short *fb,int x, int y, char ch, unsigned short color,fo
   }
 }
 
+//Put rectangle with given coordinates and color
 void draw_rectangle(unsigned short *fb,int x,int y,int w,int h,unsigned short color){
   for (int j = 0;j < h;j++)
       for (int i = 0;i < w;i++) 
@@ -71,9 +78,12 @@ void draw_rectangle(unsigned short *fb,int x,int y,int w,int h,unsigned short co
   return;
 }
 
+//Function smoothly connects two dots without gaps
 void connect_dots(unsigned short *fb,int x,int y,int px,int py,int w,int h,unsigned short color){
   draw_rectangle(fb, px, py, w, h, color);
   draw_rectangle(fb, x, y, w, h, color);
+
+  //handle the situation when dots are on different sides after crossing the bounds
   if(abs(px-x) > 200){
     if(x <= 100)px = 0;
     else px = 480;
@@ -82,6 +92,7 @@ void connect_dots(unsigned short *fb,int x,int y,int px,int py,int w,int h,unsig
     if(y <= 100)py = 0;
     else py = 320;
   }
+
   int cx=px,cy=py;
   while( (cx != x) || (cy != y) ){
     draw_rectangle(fb, cx, cy, w, h, color);
@@ -93,6 +104,7 @@ void connect_dots(unsigned short *fb,int x,int y,int px,int py,int w,int h,unsig
   return;
 }
 
+//Function puts given string of the given color in the frame buffer
 void draw_string(unsigned short *fb,int x, int y, char* string, unsigned short color,font_descriptor_t *fdes,int scale){
   int dx = 0;
   int sz = strlen(string);

@@ -2,6 +2,7 @@
 
 font_descriptor_t *fdes = &font_rom8x16;
 
+//Function updates state on the led line to create animation in main menu
 void menu_animation(unsigned char *mem_base,int* x,int* dir){
     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = *x;
     if(*dir == 1)
@@ -12,6 +13,7 @@ void menu_animation(unsigned char *mem_base,int* x,int* dir){
     return;
 }
 
+//Function updates state on the led line to create animation while drawing on canvas
 void drawing_animation(unsigned char *mem_base){
    unsigned int v = 0;
    int x;
@@ -27,19 +29,20 @@ void drawing_animation(unsigned char *mem_base){
    return;
 }
 
-
+//Function creates main menu and puts it on the screen
 void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb) {
-  my_sleep(500);
+  my_sleep(500); // Sleep is needed to wait until the user releases the button
+  //Initializing
   int val_line = 255;
   int dir = 1;
   unsigned short cur_state = START;
   char* string = (char*)malloc(30);
   unsigned short g;
-  display_LED_lights(mem_base,0,0,0);
+  display_LED_lights(mem_base,0,0,0);//Turn off LED color indicators
   while (1) {
-    menu_animation(mem_base,&val_line,&dir);
+    menu_animation(mem_base,&val_line,&dir); //Upd LED line
     int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-    g = (knobs>>8) & 255;
+    g = (knobs>>8) & 255; //get value of the green knob
     fill_buffer(fb, 0xffff);
     cur_state = (g/4) % 3; //Lower sensivity in main menu
     switch(cur_state) {
@@ -53,6 +56,8 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
         draw_char(fb, 110, 235, '>', 0x0000, fdes, 3);
         break;
     }
+    
+    //Draw menu elements
     memset(string,0,30);
     strncpy(string, "APO:GRAFO\0", 10);
     draw_string(fb,40,45,string,0x0000,fdes,5);
@@ -73,7 +78,7 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
     update_canvas(fb,parlcd_mem_base);
     my_sleep(1);
 
-    if ((knobs&0x07000000)==0x02000000){
+    if ((knobs&0x07000000)==0x02000000){ //Start drawing programm when G pressed
       my_sleep(1);
       switch(cur_state) {
         case START:
@@ -83,6 +88,7 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
           show_tutorial(mem_base,parlcd_mem_base,fb);
           break;
         case EXIT:
+          //Turn off everything
           *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = 0;
           display_LED_lights(mem_base,0,0,0);
           parlcd_write_cmd(parlcd_mem_base, 0x2c);
@@ -96,6 +102,7 @@ void draw_main_menu(unsigned char *mem_base, void* parlcd_mem_base, unsigned sho
   }
 }
 
+//Get RGB background from the user and put it on the screen
 void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* background_clr){    
   draw_rectangle(fb,80,60,320,200,0xFFFF);
   my_sleep(500);
@@ -109,6 +116,10 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
   int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   cur_knobs &= (16777215);
 
+  /*
+  Deltas needed to display original values in order to display relevant values
+  so there will be displayed 0 0 0.
+  */
   dr = (256 - ((cur_knobs>>16) & 255)) % 256;
   dg = (256 - ((cur_knobs>>8) & 255)) % 256;
   db = (256 - (cur_knobs & 255)) % 256;
@@ -119,6 +130,7 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
     g = (((knobs>>8) & 255)+dg) % 256;
     b = ((knobs & 255)+db) % 256;
     display_LED_lights(mem_base,r,g,b);
+    //Draw GUI
     draw_rectangle(fb,80,60,320,200,0x0000);
     string[0] = 'R';string[2] = r/100+48;string[3] = (r/10)%10+48;string[4] = r%10+48;
     draw_string(fb,110,60,string,0xffff,fdes,4);
@@ -129,6 +141,7 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
     update_canvas(fb,parlcd_mem_base);
     my_sleep(1);
 
+    //Leave function if G button is pressed again
     if ((knobs&0x07000000)==0x02000000){
       my_sleep(500);
       
@@ -139,6 +152,7 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
   }
 }
 
+//Get new brush size from the user and set it
 void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs){
   draw_rectangle(fb,80,60,320,200,0xFFFF);
   my_sleep(500);
@@ -151,6 +165,7 @@ void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short
   unsigned short g;
   int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   cur_knobs &= (16777215);
+  //Delta is needed to save old value so user can simply exit setting without changing
   short orig = ((cur_knobs>>8) & 255) - *brush_size;
 
   while (1) {
@@ -159,15 +174,17 @@ void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short
     *brush_size = (255 + g - orig)%51;
     if(*brush_size < 5)*brush_size = 5;
 
+    //Draw GUI
     draw_rectangle(fb,80,60,320,200,0xFFFF);
-
     string[5] = ((*brush_size)/10)%10+48;string[6] = (*brush_size)%10+48;
+    //If color is close to white, show it as black
     if (clr_to_display >= 0xFFFA && clr_to_display <= 0xFFFF) clr_to_display = 0x0000;
     draw_rectangle(fb, 207, 120, (int)*brush_size, (int)*brush_size, clr_to_display);
     draw_string(fb,165,220,string,0x0000,fdes,2);
     update_canvas(fb,parlcd_mem_base);
     my_sleep(1);
 
+    //Leave function if G button is pressed again
     if ((knobs&0x07000000)==0x02000000){
       my_sleep(500);
       knobs &= (16777215);
@@ -178,6 +195,7 @@ void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short
   }
 }
 
+//Get new brush color from the user and set it
 void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs){
   draw_rectangle(fb,80,60,320,200,0xFFFF);
   my_sleep(500);
@@ -192,6 +210,10 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
   int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
   cur_knobs &= (16777215);
 
+  /*
+  Deltas needed to display original values in order to display relevant values
+  so user can exit the function without changes brush color
+  */
   dr = (256 + old_r - ((cur_knobs>>16) & 255)) % 256;
   dg = (256 + old_g - ((cur_knobs>>8) & 255)) % 256;
   db = (256 + old_b - (cur_knobs & 255)) % 256;
@@ -202,7 +224,8 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
     g = (((knobs>>8) & 255)+dg) % 256;
     b = ((knobs & 255)+db) % 256;
     display_LED_lights(mem_base,r,g,b);
-
+    
+    //Draw GUI
     draw_rectangle(fb,80,60,320,200,0xFFFF);
     string[0] = 'R';string[2] = r/100+48;string[3] = (r/10)%10+48;string[4] = r%10+48;
     draw_string(fb,110,60,string,0x0000,fdes,4);
@@ -213,7 +236,7 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
     update_canvas(fb,parlcd_mem_base);
     my_sleep(1);
 
-    if ((knobs&0x07000000)==0x02000000){
+    if ((knobs&0x07000000)==0x02000000){ // Exit funciton
       my_sleep(500);
       
       knobs &= (16777215);
@@ -226,21 +249,28 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
   }
 }
 
+//Function calls brush-configuration functions, then returns to frame buffer with drawing
 void configurate_brush(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short *old_fb,unsigned short* clr,short* brush_size,int* delta_knobs,int* knobs){
-    memcpy(old_fb,fb,BUFFERS_LEN);
+    memcpy(old_fb,fb,BUFFERS_LEN); //Save current buffer
     set_brush_color(mem_base,parlcd_mem_base,fb,clr,brush_size,delta_knobs);
-    memcpy(fb,old_fb,BUFFERS_LEN);
-    *knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    memcpy(fb,old_fb,BUFFERS_LEN); //Write original frame buffer
+    *knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);//Update current knobs value
     return;
 }
 
+//Function is used to clear users drawing
 void clear_canvas(void *parlcd_mem_base,unsigned short *fb,int background_color){
     fill_buffer(fb,background_color);
     update_canvas(fb,parlcd_mem_base);
 }
 
+//Function shows canvas on screen for user to draw and handles controls
 void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb)
 {
+  /*
+  Delta is used to save brush position because when user calls brush
+  configuration values, knobs values becomes irrelevant and changes brush position
+  */
   int delta_knobs = 0;
   unsigned short clr = 0xffff; // "WHITE"
   short brush_size = 5;
@@ -257,17 +287,18 @@ void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned shor
     drawing_animation(mem_base);
     knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     
-    if ((knobs&0x07000000)==0x01000000)
+    if ((knobs&0x07000000)==0x01000000) //Blue button - go back
         return;
-    if ((knobs&0x07000000)==0x02000000) 
+    if ((knobs&0x07000000)==0x02000000) // Green button - configurate brush
       configurate_brush(mem_base,parlcd_mem_base,fb,old_fb,&clr,&brush_size,&delta_knobs,&knobs);
-    if ((knobs&0x07000000)==0x04000000)
+    if ((knobs&0x07000000)==0x04000000) // Red button - clear drawing
         clear_canvas(parlcd_mem_base,fb,background_color);
 
     int pos_knobs = knobs-delta_knobs;
     xx = ((pos_knobs&0xff)*480)/256;
     yy = (((pos_knobs>>16)&0xff)*320)/256;
 
+    //Clear the gap
     connect_dots(fb, xx, yy,pr_xx,pr_yy, brush_size, brush_size, clr);
     pr_xx = xx;
     pr_yy = yy;
@@ -277,7 +308,9 @@ void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned shor
   }
 }
 
+//Function shows tutorial on the screen
 void show_tutorial(unsigned char *mem_base, void* parlcd_mem_base, unsigned short *fb){
+    //Draw strings
     fill_buffer(fb,0);
     update_canvas(fb,parlcd_mem_base);
     char* string = (char*)malloc(30);
@@ -305,7 +338,7 @@ void show_tutorial(unsigned char *mem_base, void* parlcd_mem_base, unsigned shor
     update_canvas(fb,parlcd_mem_base);
     while (1) {
         int knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-        if ((knobs&0x07000000)==0x01000000) return;
+        if ((knobs&0x07000000)==0x01000000) return; // Blue button - go back
         my_sleep(1);
     }
 }

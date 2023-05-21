@@ -1,6 +1,6 @@
 #include "color_utils.h"
 
-// change color to LED format (RGB)
+// convert RGB color format to LED
 void unite_RGB(unsigned int *color, uint8_t r, uint8_t g, uint8_t b){
   uint32_t val = 0;
   val |= r;
@@ -13,16 +13,17 @@ void unite_RGB(unsigned int *color, uint8_t r, uint8_t g, uint8_t b){
   return;
 }
 
+//Function displays RGB color on the LED lights
 void display_LED_lights(unsigned char *mem_base, unsigned short r, unsigned short g, unsigned short b) {
   unsigned int tmp_clr = 0;
-  unite_RGB(&tmp_clr, r, g, b);
+  unite_RGB(&tmp_clr, r, g, b); // Convert to the LED format
 
   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = tmp_clr;
   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = tmp_clr;
 }
 
-// change color to LCD format
-void convert_RGB_to_LCD(unsigned short *color, uint8_t r, uint8_t g, uint8_t b){
+// Function converts RGB color to RGB565 format
+void convert_RGB_to_RGB565(unsigned short *color, uint8_t r, uint8_t g, uint8_t b){
   uint32_t val = 0;
   val |= (r>>3);
   val <<= 6;
