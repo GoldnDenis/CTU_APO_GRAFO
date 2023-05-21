@@ -145,7 +145,7 @@ void set_background_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned
     if ((knobs&0x07000000)==0x02000000){
       my_sleep(500);
       
-      convert_RGB_to_LCD(background_clr, r, g, b);
+      convert_RGB_to_RGB565(background_clr, r, g, b);
       printf("color is changed to r:%d g:%d b:%d\n",r,g,b);
       return;
     }
@@ -240,7 +240,7 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
       my_sleep(500);
       
       knobs &= (16777215);
-      convert_RGB_to_LCD(clr, r, g, b);
+      convert_RGB_to_RGB565(clr, r, g, b);
       *delta_knobs += knobs - cur_knobs;
       old_r = r,old_g = g,old_b = b;
       set_brush_size(mem_base,parlcd_mem_base,fb,clr,brush_size,delta_knobs);
