@@ -195,6 +195,7 @@ void set_brush_size(unsigned char *mem_base,void *parlcd_mem_base,unsigned short
   }
 }
 
+unsigned short old_r=255,old_g=255,old_b=255;
 //Get new brush color from the user and set it
 void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned short *fb,unsigned short* clr,short* brush_size,int* delta_knobs){
   draw_rectangle(fb,80,60,320,200,0xFFFF);
@@ -204,7 +205,7 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
   string[1] = ':';
   string[5] = 0;
 
-  static unsigned short old_r=255,old_g=255,old_b=255;
+  // static unsigned short old_r=255,old_g=255,old_b=255;
   unsigned short dr,dg,db;
   unsigned short r,g,b;
   int cur_knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
@@ -238,7 +239,6 @@ void set_brush_color(unsigned char *mem_base,void *parlcd_mem_base,unsigned shor
 
     if ((knobs&0x07000000)==0x02000000){ // Exit funciton
       my_sleep(500);
-      
       knobs &= (16777215);
       convert_RGB_to_RGB565(clr, r, g, b);
       *delta_knobs += knobs - cur_knobs;
@@ -287,8 +287,10 @@ void start_drawing(unsigned char *mem_base, void* parlcd_mem_base, unsigned shor
     drawing_animation(mem_base);
     knobs = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
     
-    if ((knobs&0x07000000)==0x01000000) //Blue button - go back
+    if ((knobs&0x07000000)==0x01000000){ //Blue button - go back
+        old_r=255,old_g=255,old_b=255;
         return;
+    }
     if ((knobs&0x07000000)==0x02000000) // Green button - configurate brush
       configurate_brush(mem_base,parlcd_mem_base,fb,old_fb,&clr,&brush_size,&delta_knobs,&knobs);
     if ((knobs&0x07000000)==0x04000000) // Red button - clear drawing
