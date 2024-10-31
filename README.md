@@ -1,5 +1,5 @@
 ## Project - GRAFO
-An implemntation of Etch A Sketch (Grafo) for MicroZed processor board. The project was done in a pair with Rodion Nazarov.
+An implementation of Etch A Sketch (Grafo) for MicroZed processor board. The project was done in a pair with Rodion Nazarov.
 
 ## Course description
 Computer Architecture (APO) is a course in the 1st year of Open Informatics program at CTU FEL.
